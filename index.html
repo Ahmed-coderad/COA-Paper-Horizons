@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>COA Paper Horizons</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #fff;
+            position: relative;
+            user-select: none; /* Cegah seleksi teks */
+        }
+        canvas {
+            max-width: 100%;
+            max-height: 100%;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0); /* Transparan */
+            z-index: 9999;
+            pointer-events: none; /* Tidak mengganggu interaksi */
+        }
+        @media print {
+            body {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="protectedCanvas"></canvas>
+    <div class="overlay" id="overlay"></div>
+    <script>
+        const url = 'https://gateway.pinata.cloud/ipfs/bafybeigthudhceg2esp64ug7hmv2sjqbq5dtxn7maidxbusgu4yazjjwde';
+
+        const drawWatermark = (context, canvas) => {
+            const text = 'Rizky Ahmed Darmawan';
+            const fontSize = 24;
+            const opacity = 0.1;
+            
+            // Set proper font and style
+            context.save();
+            context.font = `${fontSize}px Arial`;
+            context.fillStyle = `rgba(0, 0, 0, ${opacity})`;
+            context.textAlign = 'center';
+
+            // Watermark kiri
+            const leftX = canvas.width * 0.1; // 10% dari lebar canvas
+            const centerY = canvas.height / 2; // Tengah secara vertikal
+            context.save();
+            context.translate(leftX, centerY);
+            context.rotate(-Math.PI / 2); // Putar teks 90 derajat
+            context.fillText(text, 0, 0);
+            context.restore();
+
+            // Watermark kanan
+            const rightX = canvas.width * 0.9; // 90% dari lebar canvas
+            context.save();
+            context.translate(rightX, centerY);
+            context.rotate(Math.PI / 2); // Putar teks -90 derajat
+            context.fillText(text, 0, 0);
+            context.restore();
+
+            context.restore();
+        };
+
+        const loadPDF = async () => {
+            const pdf = await pdfjsLib.getDocument(url).promise;
+            const page = await pdf.getPage(1);
+            const viewport = page.getViewport({ scale: 1 });
+            const canvas = document.getElementById('protectedCanvas');
+            const context = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            await page.render({
+                canvasContext: context,
+                viewport: viewport,
+            }).promise;
+
+            drawWatermark(context, canvas);
+        };
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+        loadPDF();
+
+        // Blok klik kanan
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Blok kombinasi tombol untuk tangkapan layar atau DevTools
+        document.addEventListener('keydown', (e) => {
+            const blockedKeys = ['s', 'p', 'c', 'u', 'i', 'j', 'k', 'h', 'PrintScreen'];
+            if ((e.ctrlKey || e.metaKey) && blockedKeys.includes(e.key.toLowerCase()) || e.key === 'PrintScreen') {
+                e.preventDefault();
+                alert('Aksi ini tidak diizinkan!');
+            }
+        });
+
+        // Tangkap event PrintScreen atau Screenshot
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'PrintScreen') {
+                const overlay = document.getElementById('overlay');
+                overlay.style.background = 'rgba(0, 0, 0, 1)'; // Hitamkan layar
+                setTimeout(() => {
+                    overlay.style.background = 'rgba(0, 0, 0, 0)'; // Kembalikan transparansi
+                }, 2000);
+                alert('Screenshot tidak diizinkan!');
+            }
+        });
+
+        // Deteksi gesture pada perangkat mobile
+        let touchCount = 0;
+        document.addEventListener('touchstart', (e) => {
+            touchCount = e.touches.length; // Jumlah jari menyentuh layar
+        });
+
+        document.addEventListener('touchend', () => {
+            if (touchCount >= 3) { // Jika lebih dari atau sama dengan 3 jari
+                const overlay = document.getElementById('overlay');
+                overlay.style.background = 'rgba(0, 0, 0, 1)'; // Hitamkan layar
+                setTimeout(() => {
+                    overlay.style.background = 'rgba(0, 0, 0, 0)'; // Kembalikan transparansi
+                }, 2000);
+                alert('Screenshot dengan gesture tidak diizinkan!');
+            }
+        });
+
+        // Deteksi pembukaan DevTools
+        setInterval(() => {
+            const threshold = 160;
+            const width = window.outerWidth - window.innerWidth > threshold;
+            const height = window.outerHeight - window.innerHeight > threshold;
+            if (width || height) {
+                alert('DevTools tidak diizinkan!');
+                document.body.style.display = 'none';
+            }
+        }, 500);
+    </script>
+</body>
+</html>
