@@ -1,1 +1,1 @@
-# COA.NFT1
+# COA Paper Horizons
